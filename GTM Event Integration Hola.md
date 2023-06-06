@@ -5,8 +5,7 @@
     <author>Google GTM</author>
     <code>gtm_events_integration_02</code>
     <description>Google Tag Manager events integrations</description>
-
-  <file path="catalog/view/theme/*/template/common/header.twig">
+   <file path="catalog/view/theme/*/template/common/header.twig">
         <operation>
             <search><![CDATA[{% for link in links %}]]></search>
             <add position="before"><![CDATA[
@@ -14,32 +13,79 @@
 
                 <!-- Google Tag Manager Events -->
                 <script>
+
+
+            {% if current_url=="checkout/simplecheckout" %}
+                $(function(e){
+                        dataArray=[];
+                        $(".simplecheckout-cart tbody tr").each(function(){
+                            var prod_id=$(this).find('.prod_id').val();
+                            var quantity=$(this).find('[name*="quantity"]').val();
+                            $.ajax({
+                              url: 'index.php?route=product/product/getGtmData', 
+                              type: 'post',
+                              async: false,
+                              data: {
+                                'product_id': prod_id
+                              },
+                              dataType: 'json',
+                              success: function(json) {
+                                json.quantity=quantity;
+                                dataArray.push(json);
+                               }
+                            })
+                        });
+                        var total=0; items=[];
+                        $.each(dataArray,function(a,b){
+                            total += b.quantity*(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price));
+                            item={
+                                    'item_name': b.product_names_ro, 
+                                    'item_id': b.product_info.sku, 
+                                    'price':  parseFloat(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price)).toFixed(2),  
+                                    'currency': 'MDL', 
+                                    'quantity': b.quantity, 
+                                    'item_brand': b.product_info.manufacturer, 
+                                    'item_category': b.category_names[0],  
+                                 };
+                             items.push(item);
+                        })
+                        dataLayer.push({
+                            'event': 'begin_checkout',
+                            'ecommerce': {
+                                'value': parseFloat(total).toFixed(2),
+                                'currency': 'MDL', // Currency code
+                                'items': items
+                             }
+                        });
+                    });
+            {% endif %}
+
+
                 $(function(){
                     
                     $('body').on('click', '.button-cart, .us-acc-product-btn', function(e) {
                         var parent=$(this).closest(".us-module-item");
                         var quantity = 1;
                         var price = parent.find(".us-module-price-new").text();
+                        if(price=="") price = parent.find(".us-module-price-actual").text();
                         price = price.replace(",",".");
                         price = price.replace(" ","");
-                        var numericPrice = parseFloat(price);
-                        var value = numericPrice * quantity;
-                        var formattedValue = value.toFixed(2) + " lei";
+                        price=parseFloat(price);
+                        var value = parseFloat(price) * parseInt(quantity);
                         dataLayer.push({
                             'event': 'add_to_cart',
                             'ecommerce': {
-                                'value': formattedValue,
+                                'value': parseFloat(value).toFixed(2),
                                 'currency': 'MDL', // Currency code
                                 'items': [
                                     {
                                         'item_name': parent.find(".gtm-name").val(), 
                                         'item_id': parent.find(".gtm-sku").val(), 
-                                        'price': formattedValue,  
+                                        'price': parseFloat(price).toFixed(2),  
                                         'currency': 'MDL', 
                                         'quantity': quantity, 
                                         'item_brand': parent.find(".gtm-brand").val(), 
                                         'item_category': parent.find(".gtm-category").val(),  
-                                        'index': parent.find('.gtm-index').val() 
                                      }
                                     ]
                             }
@@ -49,26 +95,25 @@
                         var parent=$(this).closest(".us-module-item");
                         var quantity = 1;
                         var price = parent.find(".us-module-price-new").text();
+                        if(price=="") price = parent.find(".us-module-price-actual").text();
                         price = price.replace(",",".");
                         price = price.replace(" ","");
-                        var numericPrice = parseFloat(price);
-                        var value = numericPrice * quantity;
-                        var formattedValue = value.toFixed(2) + " lei";
+                        price = parseFloat(price);
+                        value = price*parseInt(quantity);
                         dataLayer.push({
                             'event': 'add_to_wishlist',
                             'ecommerce': {
-                                'value': formattedValue,
+                                'value': parseFloat(value).toFixed(2),
                                 'currency': 'MDL', // Currency code
                                 'items': [
                                     {
                                         'item_name': parent.find(".gtm-name").val(), 
                                         'item_id': parent.find(".gtm-sku").val(), 
-                                        'price': formattedValue,  
+                                        'price': parseFloat(price).toFixed(2),  
                                         'currency': 'MDL', 
                                         'quantity': quantity, 
                                         'item_brand': parent.find(".gtm-brand").val(), 
                                         'item_category': parent.find(".gtm-category").val(),  
-                                        'index': parent.find('.gtm-index').val() 
                                      }
                                     ]
                             }
@@ -88,18 +133,17 @@
                             dataLayer.push({
                                 'event': 'remove_from_cart',
                                 'ecommerce': {
-                                    'value': (json.product_info.special?parseFloat(json.product_info.special).toFixed(2):parseFloat(json.product_info.price).toFixed(2))*quantity,
+                                    'value': parseFloat((json.product_info.special?parseFloat(json.product_info.special):parseFloat(json.product_info.price))*quantity).toFixed(2),
                                     'currency': 'MDL', // Currency code
                                     'items': [
                                         {
                                             'item_name': json.product_names_ro, 
                                             'item_id': json.product_info.sku, 
-                                            'price':  (json.product_info.special?parseFloat(json.product_info.special).toFixed(2):parseFloat(json.product_info.price).toFixed(2)),  
+                                            'price':  parseFloat(json.product_info.special?parseFloat(json.product_info.special):parseFloat(json.product_info.price)).toFixed(2),  
                                             'currency': 'MDL', 
                                             'quantity': quantity, 
                                             'item_brand': json.product_info.manufacturer, 
                                             'item_category': json.category_names[0],  
-                                            'index': 1 
                                          }
                                         ]
                                     }
@@ -129,18 +173,17 @@
                         dataLayer.push({
                             'event': 'remove_from_cart',
                             'ecommerce': {
-                                'value': (data.product_info.special?parseFloat(data.product_info.special).toFixed(2):parseFloat(data.product_info.price).toFixed(2))*quantity,
+                                'value': parseFloat((data.product_info.special?parseFloat(data.product_info.special):parseFloat(data.product_info.price))*quantity).toFixed(2),
                                 'currency': 'MDL', // Currency code
                                 'items': [
                                     {
                                         'item_name': data.product_names_ro, 
                                         'item_id': data.product_info.sku, 
-                                        'price':  (data.product_info.special?parseFloat(data.product_info.special).toFixed(2):parseFloat(data.product_info.price).toFixed(2)),  
+                                        'price':  parseFloat(data.product_info.special?parseFloat(data.product_info.special):parseFloat(data.product_info.price)).toFixed(2),  
                                         'currency': 'MDL', 
                                         'quantity': quantity, 
                                         'item_brand': data.product_info.manufacturer, 
                                         'item_category': data.category_names[0],  
-                                        'index': 1 
                                      }
                                     ]
                                 }
@@ -184,68 +227,25 @@
                             item={
                                     'item_name': b.product_names_ro, 
                                     'item_id': b.product_info.sku, 
-                                    'price':  (b.product_info.special?parseFloat(b.product_info.special).toFixed(2):parseFloat(b.product_info.price).toFixed(2)),  
+                                    'price':  parseFloat(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price)).toFixed(2),  
                                     'currency': 'MDL', 
                                     'quantity': b.quantity, 
                                     'item_brand': b.product_info.manufacturer, 
                                     'item_category': b.category_names[0],  
-                                    'index': a+1 
                                  };
                              items.push(item);
                         })
                         dataLayer.push({
                             'event': 'view_cart',
                             'ecommerce': {
-                                'value': total,
+                                'value': parseFloat(total).toFixed(2),
                                 'currency': 'MDL', // Currency code
                                 'items': items
                              }
                         });
                     });
                     
-                    $('body').on('click', '#us-cart-modal .us-module-btn-green:first', function(e) {
-                        dataArray=[];
-                        $(".us-cart-item").not(":first").each(function(){
-                            var prod_id=$(this).find('[name="product_id_q"]').val();
-                            var quantity=$(this).find('[name="quantity"]').val();
-                            $.ajax({
-                              url: 'index.php?route=product/product/getGtmData', 
-                              type: 'post',
-                              async: false,
-                              data: {
-                                'product_id': prod_id
-                              },
-                              dataType: 'json',
-                              success: function(json) {
-                                json.quantity=quantity;
-                                dataArray.push(json);
-                               }
-                            })
-                        });
-                        var total=0; items=[];
-                        $.each(dataArray,function(a,b){
-                            total += b.quantity*(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price));
-                            item={
-                                    'item_name': b.product_names_ro, 
-                                    'item_id': b.product_info.sku, 
-                                    'price':  (b.product_info.special?parseFloat(b.product_info.special).toFixed(2):parseFloat(b.product_info.price).toFixed(2)),  
-                                    'currency': 'MDL', 
-                                    'quantity': b.quantity, 
-                                    'item_brand': b.product_info.manufacturer, 
-                                    'item_category': b.category_names[0],  
-                                    'index': a+1 
-                                 };
-                             items.push(item);
-                        })
-                        dataLayer.push({
-                            'event': 'begin_checkout',
-                            'ecommerce': {
-                                'value': total,
-                                'currency': 'MDL', // Currency code
-                                'items': items
-                             }
-                        });
-                    });
+                    
                     // $('body').on('click', '.us-module-btn-green', function(e) {
                     $("#simplecheckout_customer input").on('blur',function(){
                         var blank=0;
@@ -278,19 +278,18 @@
                                 item={
                                         'item_name': b.product_names_ro, 
                                         'item_id': b.product_info.sku, 
-                                        'price':  (b.product_info.special?parseFloat(b.product_info.special).toFixed(2):parseFloat(b.product_info.price).toFixed(2)),  
+                                        'price':  parseFloat(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price)).toFixed(2),  
                                         'currency': 'MDL', 
                                         'quantity': b.quantity, 
                                         'item_brand': b.product_info.manufacturer, 
                                         'item_category': b.category_names[0],  
-                                        'index': a+1 
                                      };
                                  items.push(item);
                             })
                             dataLayer.push({
                                 'event': 'add_personal_info',
                                 'ecommerce': {
-                                    'value': total,
+                                    'value': parseFloat(total).toFixed(2),
                                     'currency': 'MDL', // Currency code
                                     'items': items
                                  }
@@ -324,12 +323,11 @@
                             item={
                                     'item_name': b.product_names_ro, 
                                     'item_id': b.product_info.sku, 
-                                    'price':  (b.product_info.special?parseFloat(b.product_info.special).toFixed(2):parseFloat(b.product_info.price).toFixed(2)),  
+                                    'price':  parseFloat(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price)).toFixed(2),  
                                     'currency': 'MDL', 
                                     'quantity': b.quantity, 
                                     'item_brand': b.product_info.manufacturer, 
                                     'item_category': b.category_names[0],  
-                                    'index': a+1 
                                  };
                              items.push(item);
                         })
@@ -338,7 +336,7 @@
                             'event': 'add_shipping_info',
                             'shipping_tier': $("input[name=shipping_method]:checked").parent().text().trim(), // Shipping method
                             'ecommerce': {
-                                'value': total,
+                                'value': parseFloat(total).toFixed(2),
                                 'currency': 'MDL', // Currency code
                                 'items': items
                              }
@@ -369,19 +367,18 @@
                                 item={
                                         'item_name': b.product_names_ro, 
                                         'item_id': b.product_info.sku, 
-                                        'price':  (b.product_info.special?parseFloat(b.product_info.special).toFixed(2):parseFloat(b.product_info.price).toFixed(2)),  
+                                        'price':  parseFloat(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price)).toFixed(2),  
                                         'currency': 'MDL', 
                                         'quantity': b.quantity, 
                                         'item_brand': b.product_info.manufacturer, 
                                         'item_category': b.category_names[0],  
-                                        'index': a+1 
                                      };
                                  items.push(item);
                             })
                             dataLayer.push({
                                 'event': 'add_payment_info',
                                 'ecommerce': {
-                                    'value': total,
+                                    'value': parseFloat(total).toFixed(2),
                                     'currency': 'MDL', // Currency code
                                     'payment_type': $("#simplecheckout_payment input[name=payment_method]:checked").parent().text().trim(),
                                     'items': items
@@ -390,9 +387,6 @@
                     })
                     $("#simplecheckout_button_confirm").on('click',function(){
                         var blank=0;
-                        // $("#simplecheckout_payment input").each(function(){
-                        //     if($(this).val()=="") blank++;
-                        // })
                         if(blank==0)
                         {
                             dataArray=[];
@@ -419,19 +413,18 @@
                                 item={
                                         'item_name': b.product_names_ro, 
                                         'item_id': b.product_info.sku, 
-                                        'price':  (b.product_info.special?parseFloat(b.product_info.special).toFixed(2):parseFloat(b.product_info.price).toFixed(2)),  
+                                        'price':  parseFloat(b.product_info.special?parseFloat(b.product_info.special):parseFloat(b.product_info.price)).toFixed(2),  
                                         'currency': 'MDL', 
                                         'quantity': b.quantity, 
                                         'item_brand': b.product_info.manufacturer, 
                                         'item_category': b.category_names[0],  
-                                        'index': a+1 
                                      };
                                  items.push(item);
                             })
                             dataLayer.push({
                                 'event': 'purchase',
                                 'ecommerce': {
-                                    'value': total,
+                                    'value': parseFloat(total).toFixed(2),
                                     'currency': 'MDL', // Currency code
                                     'items': items
                                  }
@@ -454,18 +447,22 @@
             <add position="after"><![CDATA[
                 <script>
                   $(document).ready(function() {
+                    {% if not special %}
+                     var price = '{{price}}';
+                     {% else %}
+                     var price = '{{ special}}';
+                     {% endif %}
+                   
+                   p=price.replace(",","."); price=p.replace(" ","");
                     dataLayer.push({
                       'event': 'view_item',
+                      'value': parseFloat(price).toFixed(2),
                       'ecommerce': {
                         'items': [
                           {
                             'name': '{{ product_names_ro }}',
                             'item_id': '{{ sku }}', 
-                            {% if not special %}
-                            'price': '{{ price }}',
-                            {% else %}
-                            'price': '{{ special }}',
-                            {% endif %}
+                            'price': parseFloat(price).toFixed(2),
                             'currency': '{{ currency }}',
                             'quantity': '1',
                             {% if manufacturer %}
@@ -476,7 +473,6 @@
                              'item_category': '{{ category_name }}',
                             {% endfor %}
                             {% endif %}   
-                            'index': '{{ product_views }}'
                           }
                         ]
                       }
@@ -486,35 +482,24 @@
                 $('body').on('click', '#button-cart', function(e) {
                     var quantity = $('#input-quantity').val();
                     {% if not special %}
-                     var price = '{{ price|replace({'lei': ''})|replace({' ': ''}) }}';
-                     var numericPrice = parseFloat(price);
-                     var value = numericPrice * quantity;
-                     var formattedValue = value.toFixed(2) + " lei";
+                     var price = '{{price}}';
                      {% else %}
-                     var special = '{{ special|replace({'lei': ''})|replace({' ': ''}) }}';
-                     var numericSpecial = parseFloat(special);
-                     var valueSpecial = numericSpecial * quantity;
-                     var formattedValueSpecial = valueSpecial.toFixed(2) + " lei";
-                     var quantity=$("#input-quantity").val();
+                     var price = '{{ special}}';
                      {% endif %}
+                     price = price.replace(",","."); 
+                     price = price.replace(" ","");
+                     price = parseFloat(price).toFixed(2); 
+                     value = price*parseInt(quantity);
                          dataLayer.push({
                          'event': 'add_to_cart',
-                         'ecommerce': {
-                            {% if not special %}
-                                'value': formattedValue,
-                                {% else %}
-                                'value': formattedValueSpecial,
-                                {% endif %}
-                                'currency': 'EUR', // Currency code
+                             'ecommerce': {
+                                'value': parseFloat(value).toFixed(2),
+                                'currency': 'MDL', // Currency code
                                 'items': [
                                     {
                                        'name': '{{ product_names_ro }}',
                                        'item_id': '{{ sku }}', 
-                                       {% if not special %}
-                                       'price': '{{ price }}',
-                                       {% else %}
-                                       'price': '{{ special }}',
-                                       {% endif %}
+                                       'price': parseFloat(price).toFixed(2),
                                        'currency': '{{ currency }}',
                                        'quantity': quantity,
                                       {% if manufacturer %}
@@ -525,7 +510,6 @@
                                         'item_category': '{{ category_name }}',
                                        {% endfor %}
                                        {% endif %}   
-                                       'index': '{{ product_views }}'
                                      }
                                 ]
                             }
@@ -534,35 +518,26 @@
                     $('body').on('click', '.compare-wishlist-btn', function(e) {
                     var quantity = $('#input-quantity').val();
                     {% if not special %}
-                     var price = '{{ price|replace({'lei': ''})|replace({' ': ''}) }}';
-                     var numericPrice = parseFloat(price);
-                     var value = numericPrice * quantity;
-                     var formattedValue = value.toFixed(2) + " lei";
+                     var price = '{{price}}';
                      {% else %}
-                     var special = '{{ special|replace({'lei': ''})|replace({' ': ''}) }}';
-                     var numericSpecial = parseFloat(special);
-                     var valueSpecial = numericSpecial * quantity;
-                     var formattedValueSpecial = valueSpecial.toFixed(2) + " lei";
-                     var quantity=$("#input-quantity").val();
+                     var price = '{{ special}}';
                      {% endif %}
+                     price = price.replace(",","."); 
+                     price = price.replace(" ","");
+                     price = parseFloat(price).toFixed(2); 
+                     value = price*parseInt(quantity);
                          dataLayer.push({
                          'event': 'add_to_wishlist',
+                         'value': parseFloat(value).toFixed(2),
                          'ecommerce': {
-                            {% if not special %}
-                                'value': formattedValue,
-                                {% else %}
-                                'value': formattedValueSpecial,
-                                {% endif %}
-                                'currency': 'EUR', // Currency code
+                            
+                            'value': price,
+                                'currency': 'MDL', // Currency code
                                 'items': [
                                     {
                                        'name': '{{ product_names_ro }}',
                                        'item_id': '{{ sku }}', 
-                                       {% if not special %}
-                                       'price': '{{ price }}',
-                                       {% else %}
-                                       'price': '{{ special }}',
-                                       {% endif %}
+                                       'price': parseFloat(price).toFixed(2),
                                        'currency': '{{ currency }}',
                                        'quantity': quantity,
                                       {% if manufacturer %}
@@ -573,7 +548,6 @@
                                         'item_category': '{{ category_name }}',
                                        {% endfor %}
                                        {% endif %}   
-                                       'index': '{{ product_views }}'
                                      }
                                 ]
                             }
@@ -583,6 +557,15 @@
                 ]]></add>
         </operation>
     </file>
+
+    <file path="catalog/controller/common/header.php">
+        <operation>
+            <search><![CDATA[return $this->load->view('common/header', $data);]]></search>
+            <add position="before"><![CDATA[$data['current_url'] = $this->request->get['route'];]]></add>
+        </operation>
+    </file>
+
+
     <file path="catalog/controller/product/product.php">
         <operation>
             <search><![CDATA[$data['rating'] = (int)$product_info['rating'];]]></search>
@@ -597,12 +580,10 @@
                     $category_names = $this->model_catalog_product->getProductCategoryNames($product_id);
                     $data['category_names'] = $category_names;
 
-                    
-                   
-                  
                     $product_views = $this->model_catalog_product->getProductViews($product_id);
                    
                     $data['product_views'] = $product_views;
+
                 ]]></add>
         </operation>
         <operation>
@@ -657,9 +638,12 @@
                             return 0;
                         }
                     }
+                    
                 ]]></add>
         </operation>
     </file>
+
+
     <file path="catalog/view/theme/*/template/product/category.twig">
         <operation>
             <search><![CDATA[{% if product.oct_stickers is not empty%}]]></search>
@@ -723,4 +707,6 @@
                 ]]></add>
         </operation>
     </file>
+
 </modification>
+ 
