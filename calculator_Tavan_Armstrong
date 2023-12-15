@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Calculator Tavan Armstrong</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+
+    <script>
+         function calculatePerimeterAndArea() {
+        var widthField = document.getElementById('width');
+        var lengthField = document.getElementById('length');
+        var userAreaField = document.getElementById('user_area');
+        var userPerimeterField = document.getElementById('user_perimeter');
+
+        var width = parseFloat(widthField.value) || 0;
+        var length = parseFloat(lengthField.value) || 0;
+        var userArea = parseFloat(userAreaField.value);
+        var userPerimeter = parseFloat(userPerimeterField.value);
+
+        var area, perimeter;
+
+        if (!isNaN(userArea) || !isNaN(userPerimeter)) {
+            widthField.disabled = true;
+            lengthField.disabled = true;
+
+            if (!isNaN(userArea)) {
+                area = userArea;
+                let side = Math.sqrt(area);
+                perimeter = 4 * side;
+            } else if (!isNaN(userPerimeter)) {
+                perimeter = userPerimeter;
+                let side = perimeter / 4;
+                area = side * side;
+            }
+        } else {
+            widthField.disabled = false;
+            lengthField.disabled = false;
+
+            area = width * length;
+            perimeter = 2 * (width + length);
+        }
+
+        // Formatarea numerelor cu două zecimale
+        document.getElementById('perimeter_info').innerText = perimeter.toFixed(0) + ' metri';
+        document.getElementById('metru_patrat_info').innerText = area.toFixed(0) + ' metri pătrați';
+
+        // Apelarea funcției calculateMaterials pentru a actualiza rezultatele
+        calculateMaterials(area, perimeter);
+    }
+
+        function calculateMaterials(area, perimeter) {
+            var panelSize = document.getElementById('panel_size').value;
+
+            var coeficientPlaca = (panelSize === "0.72") ? 1.38895 : 2.7779;
+
+            var numarPlaci = Math.ceil(area * coeficientPlaca);
+            var numarPlaci0_6m = Math.ceil(area * 1.4);
+            var numarProfilPrincipal3_7m = Math.ceil(area * 0.230);
+            var numarPlaci1_2m = Math.ceil(area * 1.4);
+            var numarSuspensii = Math.ceil(area * 0.7);
+            var numarColt3m = Math.round(perimeter);
+            var numarAnchorKlin = Math.round(area * 0.7);
+            var numarDowel = Math.round(perimeter * 2);
+
+            var rezultate = `
+                <table class="table table-bordered">
+                    <tr><th>Denumire</th><th>Cantitate</th></tr>
+                    <tr><td>Placă ${panelSize === "0.72" ? "1200 x 600" : "600 x 600"}</td><td>${numarPlaci}</td></tr>
+                    <tr><td>Plancă 0.6 m</td><td>${numarPlaci0_6m}</td></tr>
+                    <tr><td>Profil Principal 3.7 m</td><td>${numarProfilPrincipal3_7m}</td></tr>
+                    <tr><td>Plancă 1.2 m</td><td>${numarPlaci1_2m}</td></tr>
+                    <tr><td>Suspensie</td><td>${numarSuspensii}</td></tr>
+                    <tr><td>Colț 3 m</td><td>${numarColt3m} metri</td></tr>
+                    <tr><td>Anchor-Klin</td><td>${numarAnchorKlin}</td></tr>
+                    <tr><td>Dowel</td><td>${numarDowel}</td></tr>
+                </table>
+            `;
+
+            document.getElementById('results').innerHTML = rezultate;
+            document.getElementById('perimeter_info').innerText = perimeter.toFixed(2) + ' metri';
+            document.getElementById('metru_patrat_info').innerText = area.toFixed(2) + ' metri pătrați';
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Calculator Materiale pentru Tavan Armstrong</h2>
+        <label for="width">Lățimea camerei (în metri):</label>
+        <input type="number" id="width" placeholder="Introduceți lățimea" oninput="calculatePerimeterAndArea()"><br>
+
+        <label for="length">Lungimea camerei (în metri):</label>
+        <input type="number" id="length" placeholder="Introduceți lungimea" oninput="calculatePerimeterAndArea()"><br>
+
+        <label for="user_area">Introduceți Aria (metri pătrați):</label>
+        <input type="number" id="user_area" placeholder="Aria" oninput="calculatePerimeterAndArea()"><br>
+
+        <label for="user_perimeter">Introduceți Perimetrul (metri):</label>
+        <input type="number" id="user_perimeter" placeholder="Perimetrul" oninput="calculatePerimeterAndArea()"><br>
+
+        <label for="panel_size">Selectați Dimensiunea Plăcilor:</label>
+        <select name="panel_size" id="panel_size" onchange="calculatePerimeterAndArea()">
+            <option value="0" selected="" disabled="">Selectați dimensiunea plăcilor *</option>
+            <option value="0.36">600*600mm</option>
+            <option value="0.72">1200*600mm</option>
+        </select><br>
+
+        <h3>Perimetru:</h3>
+        <label id="perimeter_info"></label><br>
+
+        <h3>Metru Pătrat:</h3>
+        <label id="metru_patrat_info"></label><br>
+        
+
+        <h3>Rezultate:</h3>
+        <div id="results"></div>
+    </div>
+</body>
+
+</html>
