@@ -1,0 +1,177 @@
+// Configurare
+const domain = "www.semperfli.net";
+const username = "csvapislave";
+const apikey = "988a70e5010df986f2623fe340a954c9fd00977e";
+const version = 1;
+
+// Functie pentru a construi parametrii URL manual
+function buildUrlParams(params) {
+  return Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
+}
+
+// Functie pentru a obtine date de la Bluepark API
+function fetchBlueparkData(resource, params = {}) {
+  let url = `https://${domain}/api/v${version}/${resource}`;
+  const options = {
+    method: 'get',
+    headers: {
+      'Authorization': 'Basic ' + Utilities.base64Encode(username + ':' + apikey),
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    muteHttpExceptions: true // Adăugăm această opțiune
+  };
+
+  if (Object.keys(params).length) {
+    url += '?' + buildUrlParams(params);
+  }
+
+  Logger.log(`URL: ${url}`);
+
+  const response = UrlFetchApp.fetch(url, options);
+  const responseCode = response.getResponseCode();
+
+  Logger.log(`Response Code: ${responseCode}`);
+  Logger.log(`Response Text: ${response.getContentText()}`);
+
+  if (responseCode === 200) {
+    return JSON.parse(response.getContentText());
+  } else {
+    throw new Error(`Request failed with code ${responseCode}`);
+  }
+}
+
+// Functie pentru a exporta datele in Google Sheets
+function exportOrdersToSheet() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Customer Orders Status 2024') || 
+                  SpreadsheetApp.getActiveSpreadsheet().insertSheet('Customer Orders Status 2024');
+
+    // Golim sheet-ul
+    sheet.clear();
+
+    // Adaugam anteturile
+    const headers = ['Order Number', 'Order Date', 'Due Date', 'Custom Status', 'Title', 'First Name', 'Last Name', 'Company Name'];
+    sheet.appendRow(headers);
+
+    // Obtinem datele de la Bluepark
+    const orders = fetchBlueparkData('orders', { status_id: 1, limit: 100 });
+
+    // Adaugam datele in sheet
+    orders.forEach(order => {
+      sheet.appendRow([
+        order.order_number,
+        order.order_date,
+        order.due_date,
+        order.custom_status.name,
+        order.billing_address.title,
+        order.billing_address.first_name,
+        order.billing_address.last_name,
+        order.billing_address.company_name
+      ]);
+    });
+    
+    // Fixăm primul rând și stilul acestuia
+    fixFirstRowInAllSheets();
+  } catch (e) {
+    Logger.log(e.message);
+  }
+}
+
+// Functie pentru a crea foi separate pentru fiecare produs dintr-o comanda
+function exportOrderProductsToSheet() {
+  try {
+    const orders = fetchBlueparkData('orders', { status_id: 1, limit: 100 });
+    const orderNumbers = orders.map(order => order.order_number);
+
+    const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+
+    // Stergem foile care nu mai corespund comenzilor active
+    sheets.forEach(sheet => {
+      const sheetName = sheet.getName();
+      if (sheetName.startsWith('Order ')) {
+        const orderNumber = sheetName.replace('Order ', '');
+        if (!orderNumbers.includes(orderNumber)) {
+          SpreadsheetApp.getActiveSpreadsheet().deleteSheet(sheet);
+        }
+      }
+    });
+
+    orders.forEach(order => {
+      const sheetName = `Order ${order.order_number}`;
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName) || 
+                    SpreadsheetApp.getActiveSpreadsheet().insertSheet(sheetName);
+
+      // Golim sheet-ul
+      sheet.clear();
+
+      // Adaugam anteturile
+      const headers = ['Order Number', 'Sku', 'Quantity', 'Quantity Picked', 'Quantity Shipped', 'Quantity Refunded'];
+      sheet.appendRow(headers);
+
+      // Obtinem produsele din comanda
+      const products = order.products;
+
+      // Adaugam produsele in sheet
+      products.forEach(product => {
+        sheet.appendRow([
+          order.order_number,
+          product.sku,
+          product.quantity,
+          product.quantity_picked,
+          product.quantity_shipped,
+          product.quantity_refunded
+        ]);
+      });
+
+      // Fixăm primul rând și stilul acestuia
+      fixFirstRowInAllSheets();
+    });
+  } catch (e) {
+    Logger.log(e.message);
+  }
+}
+
+// Functie pentru a rula exporturile la intervale orare
+function createTimeDrivenTriggers() {
+  ScriptApp.newTrigger('exportOrdersToSheet')
+           .timeBased()
+           .everyMinutes(10)
+           .create();
+  
+  ScriptApp.newTrigger('exportOrderProductsToSheet')
+           .timeBased()
+           .everyMinutes(10)
+           .create();
+}
+
+// Ruleaza acest lucru o singura data pentru a seta declansatoarele
+function setup() {
+  createTimeDrivenTriggers();
+}
+
+// Functie pentru a sterge toate declansatoarele
+function deleteTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
+  }
+}
+deleteTriggers();
+
+// Functie pentru a fixa primul rand in fiecare foaie si a schimba stilul
+function fixFirstRowInAllSheets() {
+  const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  
+  sheets.forEach(sheet => {
+    // Fixam primul rand
+    sheet.setFrozenRows(1);
+    
+    // Setam stilul pentru primul rand
+    const range = sheet.getRange(1, 1, 1, sheet.getMaxColumns());
+    range.setBackground('#f7760c');
+    range.setFontColor('#ffffff');
+  });
+}
+fixFirstRowInAllSheets();
+
